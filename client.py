@@ -1,9 +1,14 @@
 import argparse
 import os
+import smtplib
 import socket
+import ssl
 import sys
 import threading
 import tkinter as tk
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+import random
 
 
 class Send(threading.Thread):
@@ -75,6 +80,47 @@ class Client:
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.name = None
         self.messages = None
+        self.email = None
+        self.password_code = None
+        self.valid_code = None
+        self.check = None
+
+    def send_email(self, email):
+        password = 'Jlz85_keep'
+        sender = 'asarapova@noction.com'
+        receiver = email
+        port = 465
+        confirmation_code = random.randint(1000, 10000)
+
+        email_message = MIMEMultipart("alternative")
+        email_message["Subject"] = "Email verification"
+        email_message["From"] = sender
+        email_message["To"] = receiver
+
+        body = """\
+        This message is sent automatically. Do not reply to this message.
+        Your verification code is {0}. Write this number in the application.
+        Do not send this code to anybody!""".format(confirmation_code)
+
+        mime_obj = MIMEText(body, "plain")
+        email_message.attach(mime_obj)
+
+        # Create a secure SSL context
+        context = ssl.create_default_context()
+
+        with smtplib.SMTP_SSL('smtp.gmail.com', port, context=context) as server:
+            server.login(sender, password)
+            server.sendmail(sender, receiver, email_message.as_string())
+        return confirmation_code
+
+    def check_confirmation_code(self, valid_code, input_code):
+        try:
+            if int(valid_code) == int(input_code):
+                return True
+            else:
+                return False
+        except:
+            return False
 
     def start(self):
         print('Trying to connect to {}:{}...'.format(self.host, self.port))
@@ -82,8 +128,16 @@ class Client:
 
         print('Successfully connected to {}:{}...'.format(self.host, self.port))
 
-        self.name = input('\nYour name: ')
-        print('\nWelcome. {}! Getting ready to send and receive messages...'.format(self.name))
+        self.email = input('\nEnter your email: ')
+        self.valid_code = self.send_email(self.email)
+
+        self.password_code = input('\nType the received code: ')
+        self.check = self.check_confirmation_code(self.valid_code, self.password_code)
+        if not self.check:
+            print("Sorry, wrong code.")
+        else:
+            self.name = input('\nYour name: ')
+            print('\nWelcome. {}! Getting ready to send and receive messages...'.format(self.name))
 
         # Create, send and receive threads
         send = Send(self.sock, self.name)
