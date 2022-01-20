@@ -1,4 +1,5 @@
 import argparse
+import ftplib
 import os
 import smtplib
 import socket
@@ -86,8 +87,8 @@ class Client:
         self.check = None
 
     def send_email(self, email):
-        password = 'Jlz85_keep'
-        sender = 'asarapova@noction.com'
+        password = '147fg85fg'
+        sender = 'testing820mail@gmail.com'
         receiver = email
         port = 465
         confirmation_code = random.randint(1000, 10000)
@@ -153,6 +154,11 @@ class Client:
         return receive
 
     def send(self, text_input):
+        host = '127.0.0.1'
+        port = 4001
+        usr = 'user'
+        pwd = '12345'
+
         message = text_input.get()
         text_input.delete(0, tk.END)
         self.messages.insert(tk.END, '{}: {}'.format(self.name, message))
@@ -164,6 +170,27 @@ class Client:
             self.sock.close()
             os._exit(0)
 
+        if message == "!upload":
+            # command(message)
+            ftps = ftplib.FTP()
+            ftps.connect(host, port)
+            ftps.login(usr, pwd)
+            filename = input("enter file name to upload: ")
+            # force UTF-8 encoding
+            ftps.encoding = "utf-8"
+            with open(filename, "rb") as file:
+                ftps.storbinary(f"STOR {filename}", file)
+            ftps.quit()
+
+        if message == "!download":
+            # command(message)
+            ftps = ftplib.FTP()
+            ftps.connect(host, port)
+            ftps.login(usr, pwd)
+            filename = input("enter file name to download: ")
+            with open(filename, "wb") as file:
+                ftps.retrbinary(f"RETR {filename}", file.write, 1024)
+            ftps.quit()
         # Send message to the server for broadcast
         else:
             self.sock.sendall('{}: {}'.format(self.name, message).encode('ascii'))
