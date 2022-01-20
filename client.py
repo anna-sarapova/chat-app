@@ -1,4 +1,5 @@
 import argparse
+import errno
 import ftplib
 import os
 import smtplib
@@ -13,7 +14,10 @@ import random
 
 
 class Send(threading.Thread):
-
+    host = '127.0.0.1'
+    port = 4001
+    usr = 'user'
+    pwd = '12345'
     # Listens to the input from command line
     # sock the connected sock object
     # name(str): the username provided by user
@@ -35,6 +39,28 @@ class Send(threading.Thread):
             if message == "QUIT":
                 self.sock.sendall('Server: {} has left the chat.'.format(self.name).encode('ascii'))
                 break
+
+            if message == "UPLOAD":
+                # command(message)
+                ftps = ftplib.FTP()
+                ftps.connect(self.host, self.port)
+                ftps.login(self.usr, self.pwd)
+                filename = input("enter file name to upload: ")
+                # force UTF-8 encoding
+                ftps.encoding = "utf-8"
+                with open(filename, "rb") as file:
+                    ftps.storbinary(f"STOR {filename}", file)
+                ftps.quit()
+
+            if message == "DOWNLOAD":
+                # command(message)
+                ftps = ftplib.FTP()
+                ftps.connect(self.host, self.port)
+                ftps.login(self.usr, self.pwd)
+                filename = input("enter file name to download: ")
+                with open(filename, "wb") as file:
+                    ftps.retrbinary(f"RETR {filename}", file.write, 1024)
+                ftps.quit()
             # send message to server for broadcast
             else:
                 self.sock.sendall('{}: {} '.format(self.name, message).encode('ascii'))
@@ -87,8 +113,8 @@ class Client:
         self.check = None
 
     def send_email(self, email):
-        password = '147fg85fg'
-        sender = 'testing820mail@gmail.com'
+        password = '79asU=V8xw5Y'
+        sender = 'cslabworktest1@gmail.com'
         receiver = email
         port = 465
         confirmation_code = random.randint(1000, 10000)
@@ -129,16 +155,19 @@ class Client:
 
         print('Successfully connected to {}:{}...'.format(self.host, self.port))
 
-        self.email = input('\nEnter your email: ')
-        self.valid_code = self.send_email(self.email)
-
-        self.password_code = input('\nType the received code: ')
-        self.check = self.check_confirmation_code(self.valid_code, self.password_code)
-        if not self.check:
-            print("Sorry, wrong code.")
-        else:
-            self.name = input('\nYour name: ')
-            print('\nWelcome. {}! Getting ready to send and receive messages...'.format(self.name))
+        # self.email = input('\nEnter your email: ')
+        # self.valid_code = self.send_email(self.email)
+        #
+        # self.password_code = input('\nType the received code: ')
+        # self.check = self.check_confirmation_code(self.valid_code, self.password_code)
+        # if not self.check:
+        #     print("Sorry, wrong code.")
+        #
+        #     self.sock.close()
+        #     os._exit(0)
+        # else:
+        self.name = input('\nYour name: ')
+        print('\nWelcome. {}! Getting ready to send and receive messages...'.format(self.name))
 
         # Create, send and receive threads
         send = Send(self.sock, self.name)
@@ -170,26 +199,31 @@ class Client:
             self.sock.close()
             os._exit(0)
 
-        if message == "!upload":
+        if message == "UPLOAD":
             # command(message)
             ftps = ftplib.FTP()
             ftps.connect(host, port)
             ftps.login(usr, pwd)
             filename = input("enter file name to upload: ")
+            while not os.path.isfile(filename):
+                filename = input("Whoops! No such file! Please enter the name of the file you'd like to use.")
             # force UTF-8 encoding
             ftps.encoding = "utf-8"
             with open(filename, "rb") as file:
                 ftps.storbinary(f"STOR {filename}", file)
             ftps.quit()
 
-        if message == "!download":
+        if message == "DOWNLOAD":
             # command(message)
             ftps = ftplib.FTP()
             ftps.connect(host, port)
             ftps.login(usr, pwd)
             filename = input("enter file name to download: ")
-            with open(filename, "wb") as file:
-                ftps.retrbinary(f"RETR {filename}", file.write, 1024)
+            try:
+                with open(filename, "wb") as file:
+                    ftps.retrbinary(f"RETR {filename}", file.write, 1024)
+            except FileNotFoundError:
+                print('\n Whoops! No such file!')
             ftps.quit()
         # Send message to the server for broadcast
         else:
